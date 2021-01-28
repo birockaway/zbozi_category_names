@@ -88,7 +88,7 @@ def main():
             and line.get("COUNTRY", "CZ") == "CZ"
         }
 
-    with open(f"{datadir}/out/tables/result.csv", "wt") as outfile:
+    with open(f"{datadir}out/tables/results.csv", "wt") as outfile:
         dict_writer = csv.DictWriter(
             outfile, fieldnames=["CATEGORY_ID", "CATEGORY_NAME", "CATEGORY_PATH"]
         )
