@@ -16,7 +16,17 @@ from keboola import docker
 
 def chunks(input_iterable, chunk_size):
     for i in range(0, len(input_iterable), chunk_size):
-        yield input_iterable[i : i + chunk_size]
+        yield input_iterable[i: i + chunk_size]
+
+
+def get_categories_tree(url_base, authorization_tuple):
+    response = requests.get(f"{url_base}/v1/categories/tree", auth=authorization_tuple)
+
+    if response.status_code // 100 != 2:
+        return None
+
+    content = response.json()
+    return content["data"]
 
 
 def get_category_names(url_base, authorization_tuple, category_ids_str):
@@ -70,7 +80,6 @@ def main():
     logger.info("Extracted parameters.")
     logger.info({k: v for k, v in params.items() if "#" not in k})
 
-    input_filename = params.get("input_filename")
     api_url_base = params.get("api_url")
     sleep_time = int(params.get("sleep_time"))
     chunk_size = int(params.get("chunk_size"))
@@ -78,15 +87,23 @@ def main():
     password = params.get("#password")
     auth_tuple = (login, password)
 
-    with open(f"{datadir}in/tables/{input_filename}", "rt") as infile:
-        dict_reader = csv.DictReader(infile)
-        categories = {
-            line["CATEGORY"]
-            for line in dict_reader
-            if line["CATEGORY"].isdigit()
-            and line.get("SOURCE", "zbozi") == "zbozi"
-            and line.get("COUNTRY", "CZ") == "CZ"
-        }
+    logger.info(f"Getting category ids.")
+    category_tree = get_categories_tree(api_url_base, auth_tuple)
+
+    leafs_to_explore = category_tree
+    ids = list()
+
+    while len(leafs_to_explore) > 0:
+        for leaf in leafs_to_explore:
+            if "categoryId" in leaf.keys():
+                ids.append(leaf["categoryId"])
+            if leaf.get("children") is not None:
+                leafs_to_explore = leafs_to_explore + leaf["children"]
+            leafs_to_explore.remove(leaf)
+        logger.info(f" Remaining leafs to explore: {(len(leafs_to_explore))}")
+
+    categories = {str(cat_id) for cat_id in ids}
+    logger.info(f"Collected {len(categories)} category ids.")
 
     with open(f"{datadir}out/tables/results.csv", "wt") as outfile:
         dict_writer = csv.DictWriter(
