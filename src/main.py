@@ -94,7 +94,7 @@ def main():
     ids = list()
 
     while len(leafs_to_explore) > 0:
-        for leaf in leafs_to_explore:
+        for leaf in leafs_to_explore.copy():
             if "categoryId" in leaf.keys():
                 ids.append(leaf["categoryId"])
             if leaf.get("children") is not None:
